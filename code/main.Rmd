@@ -1,0 +1,577 @@
+---
+title: "Wine Quality"
+author: "Team 6"
+date: "10/17/2022"
+output:  
+    rmdformats::downcute:
+      toc_float: true
+      number_sections: true
+---
+
+# Importing libraries and dataset
+Importing the libraries
+```{r}
+library(ggplot2)
+library(corrplot)
+```
+
+
+Importing the dataset
+```{r}
+library(ggplot2)
+wine = read.csv("../dataset/wine-quality-white-and-red.csv")
+wine[, 'type'] <- as.factor(wine[, 'type'])
+```
+```{r}
+str(wine)
+nrow(wine)
+ncol(wine)
+```
+
+Getting the summary of the dataset
+```{r}
+summary(wine)
+wine <- wine[!duplicated(wine), ]
+nrow(wine)
+```
+```{r}
+set.seed(42)
+rows <- sample(nrow(wine))
+wine <- wine[rows, ]
+nrow(wine)
+```
+
+
+Checking for null values
+```{r}
+colSums(is.na(wine))
+
+
+```
+
+Combining the red and white wine into a single dataset and removing the duplicates.
+```{r}
+
+head(wine)
+```
+# EDA
+Showing the quality of wines in white and red wines.
+```{r}
+ggplot(wine, aes(x=quality, color=type)) +
+  geom_histogram(fill="white", position="dodge")+
+  scale_x_continuous(limits = c(3, 9), breaks = seq(3, 9, 1)) +
+  theme(legend.position="top")+
+  xlab('Quality of Wine') +
+  ylab('Number of Wines')
+```
+
+Secondly, we would like to see how each independent variables differ from white and red wine. 
+
+1. fixed.acidity
+```{r result = TRUE}
+ggplot(wine, aes(x=fixed.acidity, color=type)) +
+  geom_boxplot()
+```
+
+2. volatile.acidity
+```{r result = TRUE}
+ggplot(wine, aes(x=volatile.acidity, color=type)) +
+  geom_boxplot()
+```
+
+3.citric.acid
+```{r result = TRUE}
+ggplot(wine, aes(x=citric.acid, color=type)) +
+  geom_boxplot()
+```
+
+4.residual.sugar
+```{r result = TRUE}
+ggplot(wine, aes(x=residual.sugar, color=type)) +
+  geom_boxplot()
+```
+
+5.chlorides
+```{r result = TRUE}
+ggplot(wine, aes(x=chlorides, color=type)) +
+  geom_boxplot()
+```
+
+6.free.sulfur.dioxide
+```{r result = TRUE}
+ggplot(wine, aes(x=free.sulfur.dioxide, color=type)) +
+  geom_boxplot()
+```
+
+7.total.sulfur.dioxide
+```{r result = TRUE}
+ggplot(wine, aes(x=total.sulfur.dioxide, color=type)) +
+  geom_boxplot()
+```
+
+8.density
+```{r result = TRUE}
+ggplot(wine, aes(x=density, color=type)) +
+  geom_boxplot()
+```
+
+9.pH
+```{r result = TRUE}
+ggplot(wine, aes(x=pH, color=type)) +
+  geom_boxplot()
+```
+
+10.sulphates
+```{r result = TRUE}
+ggplot(wine, aes(x=sulphates, color=type)) +
+  geom_boxplot()
+```
+
+11.alcohol
+```{r result = TRUE}
+ggplot(wine, aes(x=alcohol, color=type)) +
+  geom_boxplot()
+```
+
+
+From the boxplots, we can see that the variation is differed significantly in following variables:
+fixed.acidity
+residual.sugar
+total.sulfur.oxide
+free.sulfur.dioxide
+chlorides
+volatile.acidity
+
+```{r}
+wine_noca = subset(wine, select = -c(type) )
+wine_nocacor = cor(wine_noca )
+corrplot(wine_nocacor,type="upper")
+```
+
+As we can see from the correlation diagram, the below variables are mostly corrleated to the quality. And we would like to dig further to see the effect
+quality vs alcohol
+quality vs density
+quality vs volatile.acidity
+quality vs chlorides
+
+quality vs alcohol
+quality vs sulphates
+quality vs citric.acid
+quality vs volatile.acidity
+
+We would anaysis in follwing steps:
+1. normality test - qq plot & histagram
+2. correlation test 
+3. scatter plot&boxplot- check the relationship
+4. Annova test - compare means of our attribute across the wines and check if differences are statistically significant compared to the quality of a wine.
+
+1.quality vs alcohol
+The distribution of alcohol data is right skewed
+```{r result = TRUE,warning=F}
+qqnorm(wine$alcohol, pch = 1, frame = FALSE)
+qqline(wine$alcohol, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=alcohol)) + geom_histogram()
+cor.test(wine$alcohol,wine$quality)
+```
+
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=alcohol, y=quality, color=type, shape = type)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("alcohol vs Quality")
+
+```
+```{r result = TRUE,warning=F}
+wine_cat <- wine
+wine_cat$quality <- factor(wine_cat$quality)
+ggplot(wine_cat, aes(x=quality, y=alcohol, fill=type)) + 
+    geom_boxplot() +
+    facet_wrap(~type)+
+    ggtitle("alcohol vs Quality")
+
+anova_alcohol = aov(alcohol ~ quality, data=wine_cat)
+summary(anova_alcohol)
+```
+
+2.quality vs density
+Density plot looks normally distributed
+```{r result = TRUE,warning=F}
+qqnorm(wine$density, pch = 1, frame = FALSE)
+qqline(wine$density, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=density)) + geom_histogram()
+cor.test(wine$density,wine$quality)
+```
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=density, y=quality, color=type, shape = type)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("density vs Quality")
+
+```
+```{r result = TRUE,warning=F}
+ggplot(wine_cat, aes(x=quality, y=density, fill=type)) + 
+    geom_boxplot() +
+    facet_wrap(~type)+
+    ggtitle("density vs Quality")
+
+anova_density = aov(density ~ quality, data=wine_cat)
+summary(anova_density)
+```
+
+
+3.quality vs volatile.acidity
+The distribution of volatile.acidity data is almost normal,However, there is a small tail on the right side of the plot
+```{r result = TRUE,warning=F}
+qqnorm(wine$volatile.acidity, pch = 1, frame = FALSE)
+qqline(wine$volatile.acidity, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=volatile.acidity)) + geom_histogram()
+cor.test(wine$volatile.acidity,wine$quality)
+```
+
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=volatile.acidity, y=quality, color=type, shape = type)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("volatile.acidity vs Quality")
+```
+```{r result = TRUE,warning=F}
+ggplot(wine_cat, aes(x=quality, y=volatile.acidity, fill=type)) + 
+    geom_boxplot() +
+    facet_wrap(~type)+
+    ggtitle("volatile.acidity vs Quality")
+
+anova_volatile.acidity = aov(volatile.acidity ~ quality, data=wine_cat)
+summary(anova_volatile.acidity)
+```
+
+4.quality vs chlorides
+The distribution looks like normally distributed but is also right skewed 
+```{r result = TRUE,warning=F}
+qqnorm(wine$density, pch = 1, frame = FALSE)
+qqline(wine$density, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=density)) + geom_histogram()
+cor.test(wine$density,wine$quality)
+```
+
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=chlorides,y=quality, color=type, shape = type)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("chlorides vs Quality")
+```
+```{r result = TRUE,warning=F}
+ggplot(wine_cat, aes(x=quality, y=chlorides, fill=type)) + 
+    geom_boxplot() +
+    facet_wrap(~type)+
+    ggtitle("chlorides vs Quality")
+
+anova_chlorides = aov(chlorides ~ quality, data=wine_cat)
+summary(anova_chlorides)
+```
+# Modeling
+
+```{r}
+for (xx in 1:(length(wine)-2) ) {
+  for (yy in (xx+1):(length(wine)-1) ) {
+    print(xx)
+    print(yy)
+    p <- ggplot(wine, aes(x=wine[,xx], y=wine[,yy], color=quality)) +
+      geom_point() +
+      labs( x = colnames(wine)[xx], y = colnames(wine)[yy], title = paste(colnames(wine)[yy],"vs",colnames(wine)[xx]) )
+    print(p)
+  }
+}
+```
+
+
+## KNN Algorithm
+
+
+```{r}
+set.seed(1000)
+qualityvariable <- ifelse(wine$quality > 5, "high", "low")
+wineknn<- data.frame(wine, qualityvariable)
+wineknn <- wineknn[, -13]
+wineknn <- wineknn[, -1]
+head(wineknn)
+scaleddata <- as.data.frame(scale(wineknn[1:11], center = TRUE, scale = TRUE))
+head(scaleddata)
+wine_sample <- sample(2, nrow(scaleddata), replace=TRUE, prob=c(0.67, 0.33))
+wine_training <- scaleddata[wine_sample==1, ]
+```
+
+```{r}
+wine_test <- scaleddata[wine_sample==2, ]
+nrow(wine_test)
+```
+```{r}
+wine.trainLabels <- wineknn[wine_sample==1, 12]
+
+wine.testLabels <- wineknn[wine_sample==2, 12]
+length(wine.testLabels)
+```
+```{r}
+library(class)
+library(caret)
+nrow(wine_training)
+length(wine.trainLabels)
+wine_model_pred <- knn(train = wine_training, test = wine_test, cl=wine.trainLabels, k=19)
+```
+```{r}
+library(gmodels)
+crosst <- CrossTable(wine.testLabels, wine_model_pred, prop.chisq = FALSE)
+crosst
+```
+
+```{r}
+cm = confusionMatrix(wine_model_pred, reference = as.factor(wine.testLabels) ) # from caret library
+
+print( paste("Total Accuracy = ", cm$overall['Accuracy'] ) )
+```
+
+```{r}
+chooseK = function(k, train_set, val_set, train_class, val_class){
+  
+  # Build knn with k neighbors considered.
+  set.seed(1)
+  class_knn = knn(train = train_set,    #<- training set cases
+                  test = val_set,       #<- test set cases
+                  cl = train_class,     #<- category for classification
+                  k = k) #,                #<- number of neighbors considered
+                  # use.all = TRUE)       #<- control ties between class assignments. If true, all distances equal to the k-th largest are included
+  
+  tab = table(class_knn, val_class)
+  
+  # Calculate the accuracy.
+  accu = sum(tab[row(tab) == col(tab)]) / sum(tab)                         
+  cbind(k = k, accuracy = accu)
+}
+
+# The sapply() function plugs in several values into our chooseK function.
+# function(x)[function] allows you to apply a series of numbers
+# to a function without running a for() loop.
+knn_different_k = sapply(seq(1, 30, by = 2),  #<- set k to be odd number from 1 to 21
+                         function(x) chooseK(x, 
+                                             train_set = wine_training,
+                                             val_set =wine_test,
+                                             train_class =wine.trainLabels,
+                                             val_class =wine.testLabels ))
+
+# Reformat the results to graph the results.
+str(knn_different_k)
+knn_different_k = data.frame(k = knn_different_k[1,],
+                             accuracy = knn_different_k[2,])
+knn_different_k
+# Plot accuracy vs. k.
+# install.packages("ggplot2")
+
+ggplot(knn_different_k,
+       aes(x = k, y = accuracy)) +
+  geom_line(color = "orange", linewidth = 1.5) +
+  geom_point(size = 3) + 
+  labs(title = "accuracy vs k")
+```
+
+## Decision Tree
+
+```{r}
+set.seed(1000)
+qualityvariable <- ifelse(wine$quality > 5, "high", "low")
+winedc<- data.frame(wine, qualityvariable)
+table(winedc$qualityvariable)
+winedc <- winedc[, -13]
+winedc <- winedc[, -1]
+wine_sample_for_dc <- sample(2, nrow(winedc), replace=TRUE, prob=c(0.67, 0.33))
+wine_training_for_dc <- winedc[wine_sample_for_dc==1, ]
+nrow(wine_training_for_dc)
+
+wine_test_for_dc <- winedc[wine_sample_for_dc==2, ]
+nrow(wine_test_for_dc)
+
+```
+
+```{r}
+library(rpart)
+library(rpart.plot)
+control <- rpart.control(minsplit = 5L, maxdepth = 5L, minbucket = 5,cp=0.002, maxsurrogate = 4)
+modeldc <-  rpart(qualityvariable~., wine_training_for_dc, method = "class", control = control)
+summary(modeldc)
+
+predict_rpart <- predict(modeldc, wine_test_for_dc[, -13], type = "class")
+
+prp(modeldc, type=2, extra=3, tweak=0.8, main = "The Quality of Wine", compress=TRUE)
+plot(modeldc, uniform=TRUE, main="Classification Tree for Kyphosis")
+text(modeldc, use.n=TRUE, all=TRUE, cex=.8)
+
+
+```
+```{r}
+rpart.plot(modeldc)
+
+```
+
+```{r}
+library(caret)
+
+
+cm = confusionMatrix(predict_rpart, as.factor(wine_test_for_dc$qualityvariable))
+print('Overall: ')
+cm$overall
+print('Class: ')
+cm$byClass
+
+```
+
+```{r}
+#loadPkg("rpart")
+#loadPkg("caret")
+
+
+confusionMatrixResultDf = data.frame( Depth=numeric(0), Accuracy= numeric(0), Sensitivity=numeric(0), Specificity=numeric(0), Pos.Pred.Value=numeric(0), Neg.Pred.Value=numeric(0), Precision=numeric(0), Recall=numeric(0), F1=numeric(0), Prevalence=numeric(0), Detection.Rate=numeric(0), Detection.Prevalence=numeric(0), Balanced.Accuracy=numeric(0), row.names = NULL )
+
+for (deep in 2:20) {
+   models <- rpart(qualityvariable~ ., wine_training_for_dc, method = "class",control = list(maxdepth = deep), cp = 0.002)
+preds <- predict(models, wine_test_for_dc[, -13], type = "class")
+cm = confusionMatrix(preds, as.factor(wine_test_for_dc$qualityvariable)) # from caret library
+  # 
+  cmaccu = cm$overall['Accuracy']
+  # print( paste("Total Accuracy = ", cmaccu ) )
+  # 
+  cmt = data.frame(Depth=deep, Accuracy = cmaccu, row.names = NULL ) # initialize a row of the metrics 
+  cmt = cbind( cmt, data.frame( t(cm$byClass) ) ) # the dataframe of the transpose, with k valued added in front
+  confusionMatrixResultDf = rbind(confusionMatrixResultDf, cmt)
+  # print("Other metrics : ")
+
+}
+print(confusionMatrixResultDf)
+```
+
+```{r}
+library(rpart.plot)
+rpart.plot(modeldc)
+```
+```{r}
+plotcp(modeldc)
+```
+```{r}
+prqualityfit <- prune(modeldc, cp = modeldc$cptable[which.min(modeldc$cptable[,"xerror"]),"CP"] )
+# Compute the accuracy of the pruned tree
+pred<- predict(prqualityfit, wine_test_for_dc[,-13], type = "class")
+accuracy_prun <- mean(pred == as.factor(wine_test_for_dc$qualityvariable))
+data.frame( accuracy_prun)
+rpart.plot(prqualityfit)
+```
+
+## Logistic Regression
+
+```{r}
+set.seed(1000)
+qualityvariable <- ifelse(wine$quality > 5, 1, 0)
+winelogit<- data.frame(wine, qualityvariable)
+
+winelogit <- winelogit[, -c(1,13)]
+#winelogit <- winelogit[, -1]
+head(winelogit)
+
+wine_sample <- sample(2, nrow(winelogit), replace=TRUE, prob=c(0.67, 0.33))
+wine_training <- winelogit[wine_sample==1, ]
+head(wine_training)
+wine_test <- winelogit[wine_sample==2, ]
+nrow(wine_test)
+nrow(wine_training)
+```
+```{r}
+#head(winelogit)
+#wine.trainLabels_logit <- winelogit[wine_sample==1, 12]
+#length(wine.trainLabels_logit)
+
+#wine.testLabels_logit <- winelogit[wine_sample==2, 12]
+
+```
+
+```{r}
+head(winelogit)
+corrlogit = cor(wine_training[,-12])
+corrlogit
+library(corrplot)
+corrplot(corrlogit,type="lower", method = "square")
+```
+
+```{r}
+
+logitmodel <-  glm(qualityvariable ~ volatile.acidity + citric.acid + 
+    residual.sugar + free.sulfur.dioxide + pH+ sulphates + alcohol , data = wine_training, family= "binomial")
+
+```
+
+```{r}
+summary(logitmodel)
+```
+
+```{r}
+expcoeff = exp(coef(logitmodel))
+expcoeff
+```
+```{r}
+head(wine_training)
+```
+
+
+```{r}
+
+fitted.results <- predict(logitmodel,newdata=subset(wine_test,select=c(1,2,3,4,5,6,8,9,10,11)),type='response')
+fitted.results_val <- ifelse(fitted.results > 0.5,1,0)
+misClasificError <- mean(fitted.results_val != wine_test$qualityvariable)
+print(paste('Accuracy',1-misClasificError))
+```
+```{r}
+library(car)
+vif(logitmodel)
+```
+```{r}
+length(fitted.results)
+length(wine_test$qualityvariable)
+confusionMatrix(as.factor(fitted.results_val), as.factor(wine_test$qualityvariable))
+```
+```{r}
+library(pROC)
+
+wine_test$prob=fitted.results
+h <- roc(qualityvariable~prob, data=wine_test)
+auc(h) # area-under-curve prefer 0.8 or higher.
+plot(h)
+```
+
+## Feature Selection for Logistic Regression
+
+```{r}
+library(leaps)
+reg.leaps <- regsubsets(qualityvariable~ volatile.acidity + citric.acid + 
+    residual.sugar + free.sulfur.dioxide + pH+ sulphates + alcohol, data = wine_training, nbest = 1, method = "exhaustive")  # leaps, 
+plot(reg.leaps, scale = "adjr2", main = "Adjusted R^2")
+```
+```{r}
+plot(reg.leaps, scale = "bic", main = "BIC")
+```
+```{r}
+plot(reg.leaps, scale = "Cp", main = "Cp")
+
+```
+```{r}
+library(bestglm)
+head(wine_test)
+wine_test_1 = wine_test[,c(-7)]
+head(wine_test_1)
+res.bestglm <- bestglm(Xy = wine_test_1,
+            IC = "AIC",                 # Information criteria for
+            method = "exhaustive")
+summary(res.bestglm)
+```
+```{r}
+res.bestglm$BestModels
+
+```
+
+# Conclusion
+
+Finally, we can see that the Logistic Regression model performed well on the dataset. Even though we only have a score of 73 %, the ROC was ~80.7 %, which makes this a pretty solid model. We can also see that in the KNN model, the accuracy was ~74%, but it is contradictory with the ROC score as it is not satisfactory. Hence, we didn't take the accuracy of KNN into consideration. 

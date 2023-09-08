@@ -1,0 +1,439 @@
+---
+title: "Study of Wine Quality"
+author: "Team 6"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: true
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    css: mystyle.css
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r init, include=FALSE}
+# The package "ezids" (EZ Intro to Data Science) includes a lot of the helper functions we developed for the course. 
+# Some of the frequently used functions are loadPkg(), xkabledply(), xkablesummary(), uzscale(), etc.
+library(ezids)
+ 
+# some of common options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+# knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+knitr::opts_chunk$set(warning = F, results = "hide", message = F)
+options(scientific=T, digits = 3) 
+options(scipen=999, digits = 3) 
+# ‘scipen’: integer. A penalty to be applied when deciding to print numeric values in fixed or exponential notation.  Positive values bias towards fixed and negative towards scientific notation: fixed notation will be preferred unless it is more than ‘scipen’ digits wider.
+# use scipen=999 to prevent scientific notation at all times
+```
+
+# General Information:
+## Abstract:
+
+In the market, wine is one of the most important social gathering ice breaker. Wine's quality is one of the most important figure for customers to measure this luxury good when they make purchase decision. Therefore, wine businesses rely heavily on wine quality certification in order to advertise their quality. Companies invest alot into it, including hire experts and research teams in order to rate the quality of their wine. However, by having experts rate all the stocks manually is costly and time-consuming for companies. Therefore, having a algorithm arting for companies becomes a better choice. The algorithm we develope in this report is trying to predict the quality of wine ranging from 1 to 10 with other collected factors.
+
+## Introduction:
+```{r}
+wine_red <- data.frame(read.csv("../dataset/winequality-red.csv",sep = ";")) 
+wine_white <- data.frame(read.csv("../dataset/winequality-white.csv",sep = ";")) 
+wine_red['category'] = "red"
+wine_white['category'] = "white"
+wine <- rbind(wine_red,wine_white)
+#wine = read.csv("../dataset/wine-quality-white-and-red.csv")
+```
+
+The data file named "wine-quality-white-and-red.csv" has 6497 observations with 13 variables, it's a combination of two files with information of white wine and red wine seperately. The combined file contants the information about different red and white wine qualities and other factors including "fixed.acidity”, "volatile.acidity”etc. Below is a header to show how the dataset looks like:
+```{r, results='asis'}
+writeLines("td, th { padding : 6px } th { background-color : blue ; color : white; border : 1px solid white; } td { color : blue ; border : 1px solid brown }", con = "mystyle.css")
+dset1 <- head(wine)
+knitr::kable(dset1, format = "html")
+```
+*Source of the data set: https://archive.ics.uci.edu/ml/datasets/wine+quality
+
+In this this, we will dig deeper to see how those factors effect the quality of wine and the difference between red wine and white wine. 
+
+## Smart Questions
+
+- Can we predict the quality of wine using the factors present in the dataset?
+- Which factor/factors most affect the quality of wine?
+- What is the difference between the accuracy obtained from different models?
+- Is there any difference in quality between red and white wines?
+
+## Data cleaning
+
+Before we start the analysis, we need first cleaning the data we have, our team removed all the rows that contains N/A values and the dataset appears to be ready to use.
+```{r}
+colSums(is.na(wine))
+```
+
+# Exploratory Data Analysis
+
+In this section, we want to learn more about our data. Especially the differences between Red wine and White wine in general to give us a better idea of the wine quality. Therefore, we checked the distribution of white wine and red wine between the 0 and 10,the difference between independent variables with red and white wine and the distribution of wine with every variable in the dataset.
+
+## Quality distrubution between white and red wine
+```{r result = TRUE}
+unique(wine$quality)
+table(wine$quality)
+table(wine_white$quality)
+library(ggplot2)
+ggplot(wine, aes(x=quality, color=category)) +
+  geom_histogram(fill="white", position="dodge")+
+  scale_x_continuous(limits = c(3, 9), breaks = seq(3, 9, 1)) +
+  theme(legend.position="top")+
+  xlab('Quality of Wine') +
+  ylab('Number of Wines')
+```
+
+As we can see from the graph, wine scores are in range [3,8]. The majority of wines  have either 5 or 6 ranking for their quality. The overall distribution is similar for both white and red wine. Red wine appears to have more rank-5 wines where white wine appears to have more rank-6 wines.(We have more white wine data than red wine).  
+
+
+## How each independent variables differ from white and red wine
+To be more specific, we would like to discover how each variable differ from each other. Resulting from the boxplots below, we can see that there are several significant difference between the two wines in the following variables:
+
+- fixed.acidity
+- residual.sugar
+- volatile.acidity
+- chlorides
+- free.sulfur.dioxide
+- total.sulfur.oxide
+
+1. fixed.acidity  
+Fixed acidity of red wine contains relatively more than the white wine with border the range and higher the median.  
+```{r result = TRUE}
+ggplot(wine, aes(x=fixed.acidity, color=category)) +
+  geom_boxplot()
+```
+
+2.residual.sugar  
+The variation of the residual sugar is much more dramatic as we can see that the range of the red wine is so norrow compares to the white wine which can indicate that the content of the residual sugar is not significant and around the similar amount among the red wine.  
+```{r result = TRUE}
+ggplot(wine, aes(x=residual.sugar, color=category)) +
+  geom_boxplot()
+```
+
+3. volatile.acidity    
+Volatile acidity acts reversly from the residual sugar in which the amount and range are higher for red wine in comparision with the white wine. And the range from 25% to 75% of the volatile.acidity is not overlapped from the two wine.  
+```{r result = TRUE}
+ggplot(wine, aes(x=volatile.acidity, color=category)) +
+  geom_boxplot()
+```
+
+4.chlorides  
+It is the similar pattern for chlorides as well such that the red wine has higher amount, but both range for chlorides this time are both narrow.  
+```{r result = TRUE}
+ggplot(wine, aes(x=chlorides, color=category)) +
+  geom_boxplot()
+```
+
+5.free.sulfur.dioxide  
+```{r result = TRUE}
+ggplot(wine, aes(x=free.sulfur.dioxide, color=category)) +
+  geom_boxplot()
+```
+
+6.total.sulfur.dioxide  
+```{r result = TRUE}
+ggplot(wine, aes(x=total.sulfur.dioxide, color=category)) +
+  geom_boxplot()
+```  
+
+In general, free sulfur dioxide should perfrom the same trend as the total sulfur dioxide as the two boxplots indicated, red wine contains less sulfur dioxide and the range is barely commited to the white wine.  
+
+The rest variables contain less variation from white wine to red wine.  
+
+7.citric.acid  
+```{r echo=FALSE, result=TRUE}
+ggplot(wine, aes(x=citric.acid, color=category)) +
+  geom_boxplot()
+```
+
+8.density  
+```{r echo=FALSE, result=TRUE}
+ggplot(wine, aes(x=density, color=category)) +
+  geom_boxplot()
+```
+
+9.pH  
+```{r echo=FALSE, result=TRUE}
+ggplot(wine, aes(x=pH, color=category)) +
+  geom_boxplot()
+```
+
+10.sulphates  
+```{r echo=FALSE, result=TRUE}
+ggplot(wine, aes(x=sulphates, color=category)) +
+  geom_boxplot()
+```
+
+11.alcohol  
+```{r echo=FALSE, result=TRUE}
+ggplot(wine, aes(x=alcohol, color=category)) +
+  geom_boxplot()
+```
+
+
+
+## Study of the correlation between each variable
+
+In this section, we will study more about the correlation between each variables, this will give us a better understanding of how those variables related to each other and whether or not they have impact to the wine quality.
+
+```{r result = TRUE,warning=F}
+loadPkg("corrplot")
+
+wine_noca = subset(wine, select = -c(category) )
+wine_nocacor = cor(wine_noca )
+corrplot(wine_nocacor,type="upper")
+```
+
+The above corrolation-plot shows that alcohol, density, volatile.acidity and chlorides has high impact(positive/negative) to the quality. In the next section, we will perform tests to study the relationship between quality and those variables.  
+
+The testing steps are as followings:  
+1. normality test - qq plot & histagram  
+2. correlation test  
+3. scatter plot&boxplot- check the relationship between the dependent and independent variables   
+4. Annova test - compare means of our attribute across the wines and check if differences are statistically significant compared to the quality of a wine.  
+
+### Quality vs. Alcohol  
+The distribution of alcohol data is right skewed as the histagram indicated.  
+```{r echo=TRUE}
+qqnorm(wine$alcohol, pch = 1, frame = FALSE)
+qqline(wine$alcohol, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=alcohol)) + geom_histogram()
+a = cor.test(wine$alcohol,wine$quality)
+```
+
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=alcohol, y=quality, color=category, shape = category)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("alcohol vs Quality")
+
+```
+```{r echo=FALSE, warning=FALSE, result=TRUE}
+wine_cat <- wine
+wine_cat$quality <- factor(wine_cat$quality)
+ggplot(wine_cat, aes(x=quality, y=alcohol, fill=category)) + 
+    geom_boxplot() +
+    facet_wrap(~category)+
+    ggtitle("alcohol vs Quality")
+
+anova_alcohol = aov(alcohol ~ quality, data=wine_cat)
+summary(anova_alcohol)
+```
+The tests shows that, for both two types of wine, the alcohol rate has a positive correlation to quality in quality range 5 - 9, and has a negative correlation to quality in quality range 3 - 5. And in generalnd Alcohol is positively related to Quality with cor coefficient 0.44 and the p value is smaller than 0.05 which interpreted that Alcohol and qualilty are significantly correlated. 
+
+### Quality vs Density
+Density plot looks normally distributed
+```{r result = TRUE,warning=F}
+qqnorm(wine$density, pch = 1, frame = FALSE)
+qqline(wine$density, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=density)) + geom_histogram()
+cor.test(wine$density,wine$quality)
+```
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=density, y=quality, color=category, shape = category)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("density vs Quality")
+
+```
+```{r result = TRUE,warning=F}
+ggplot(wine_cat, aes(x=quality, y=density, fill=category)) + 
+    geom_boxplot() +
+    facet_wrap(~category)+
+    ggtitle("density vs Quality")
+
+anova_density = aov(density ~ quality, data=wine_cat)
+summary(anova_density)
+```
+
+Tests here shows that for red wine, density appears to be same for different quality with a small negative correlation. 
+For white wine, the negative correlation appears to be more obvious, where a white wine with low density has higher chance to be a high quality wine.
+
+### Quality vs Volatile.Acidity
+The distribution of volatile.acidity data is almost normal,However, there is a small tail on the right side of the plot
+```{r result = TRUE,warning=F}
+qqnorm(wine$volatile.acidity, pch = 1, frame = FALSE)
+qqline(wine$volatile.acidity, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=volatile.acidity)) + geom_histogram()
+cor.test(wine$volatile.acidity,wine$quality)
+```
+
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=volatile.acidity, y=quality, color=category, shape = category)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("volatile.acidity vs Quality")
+```
+```{r result = TRUE,warning=F}
+ggplot(wine_cat, aes(x=quality, y=volatile.acidity, fill=category)) + 
+    geom_boxplot() +
+    facet_wrap(~category)+
+    ggtitle("volatile.acidity vs Quality")
+
+anova_volatile.acidity = aov(volatile.acidity ~ quality, data=wine_cat)
+summary(anova_volatile.acidity)
+```
+
+The behavior of the two types of wine is different now, for red wine, it shows that low quality wine has more chance to have a high volatile.acidity rate. For white wine, the volatile.acidity remain in same range for all quality levels.
+
+### Quality vs Chlorides
+The distribution looks like normally distributed but is also right skewed 
+```{r result = TRUE,warning=F}
+qqnorm(wine$density, pch = 1, frame = FALSE)
+qqline(wine$density, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=density)) + geom_histogram()
+cor.test(wine$density,wine$quality)
+```
+
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=chlorides,y=quality, color=category, shape = category)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("chlorides vs Quality")
+```
+```{r result = TRUE,warning=F}
+ggplot(wine_cat, aes(x=quality, y=chlorides, fill=category)) + 
+    geom_boxplot() +
+    facet_wrap(~category)+
+    ggtitle("chlorides vs Quality")
+
+anova_chlorides = aov(chlorides ~ quality, data=wine_cat)
+summary(anova_chlorides)
+```
+
+As we can see from the graphs, the slop of white wine is much more deeper than red wine, which indicating that for both wine, a bottle of wine with low chlorides rate has a higher chance to be a high quality wine. 
+
+Here is the end of our EDA section, We found out that the above variables play a significant role in the determination of the quality of wine. And these significance is shown in both a positive and a negative way. This observation is highly important for our research. 
+
+# Modeling
+*Please reference to code file for more information for this section.
+In this section, we will focus on using model to conclude and predict the wines' quality base on those variables. Our goal is to find the best independent variables and the model with highest accuracy. The first model we chose is KNN model, according to IBM (What Is the K-nearest Neighbors Algorithm? | IBM, n.d.), 'KNN model is a non-parametric, supervised learning classifier, which uses proximity to make classifications or predictions about the grouping of an individual data point.' 
+
+## KNN model
+
+Data is centered and scaled as the algorithm uses distance metrics, then the labels is separated and data is split into training and testing data where training data being 67%, and the remaining 33% of the data being test data. After apply the data to the KNN function, the function appears to have the best accuracy (0.744) at the K value as 19. Where the total accuracy is 74.49%.
+
+
+```{r}
+loadPkg("gmodels")
+library(class)
+library(caret)
+library(ggplot2)
+set.seed(1000)
+qualityvariable <- ifelse(wine$quality > 5, "high", "low")
+wineknn<- data.frame(wine, qualityvariable)
+wineknn <- wineknn[, -13]
+wineknn <- wineknn[, -1]
+head(wineknn)
+scaleddata <- as.data.frame(scale(wineknn[1:11], center = TRUE, scale = TRUE))
+head(scaleddata)
+wine_sample <- sample(2, nrow(scaleddata), replace=TRUE, prob=c(0.67, 0.33))
+wine_training <- scaleddata[wine_sample==1, ]
+head(wine_training)
+wine_test <- scaleddata[wine_sample==2, ]
+nrow(wine_test)
+
+wine.trainLabels <- wineknn[wine_sample==1, 12]
+
+wine.testLabels <- wineknn[wine_sample==2, 12]
+length(wine.testLabels)
+
+
+nrow(wine_training)
+length(wine.trainLabels)
+wine_model_pred <- knn(train = wine_training, test = wine_test, cl=wine.trainLabels, k=19)
+
+loadPkg("gmodels")
+crosst <- CrossTable(wine.testLabels, wine_model_pred, prop.chisq = FALSE)
+crosst
+cm = confusionMatrix(wine_model_pred, reference = as.factor(wine.testLabels) ) # from caret library
+
+print( paste("Total Accuracy = ", cm$overall['Accuracy'] ) )
+
+chooseK = function(k, train_set, val_set, train_class, val_class){
+  
+  # Build knn with k neighbors considered.
+  set.seed(1)
+  class_knn = knn(train = train_set,    #<- training set cases
+                  test = val_set,       #<- test set cases
+                  cl = train_class,     #<- category for classification
+                  k = k) #,                #<- number of neighbors considered
+                  # use.all = TRUE)       #<- control ties between class assignments. If true, all distances equal to the k-th largest are included
+  
+  tab = table(class_knn, val_class)
+  
+  # Calculate the accuracy.
+  accu = sum(tab[row(tab) == col(tab)]) / sum(tab)                         
+  cbind(k = k, accuracy = accu)
+}
+
+# The sapply() function plugs in several values into our chooseK function.
+# function(x)[function] allows you to apply a series of numbers
+# to a function without running a for() loop.
+knn_different_k = sapply(seq(1, 30, by = 2),  #<- set k to be odd number from 1 to 21
+                         function(x) chooseK(x, 
+                                             train_set = wine_training,
+                                             val_set =wine_test,
+                                             train_class =wine.trainLabels,
+                                             val_class =wine.testLabels ))
+
+# Reformat the results to graph the results.
+str(knn_different_k)
+knn_different_k = data.frame(k = knn_different_k[1,],
+                             accuracy = knn_different_k[2,])
+knn_different_k
+# Plot accuracy vs. k.
+# install.packages("ggplot2")
+loadPkg("ggplot2")
+
+ggplot(knn_different_k,
+       aes(x = k, y = accuracy)) +
+  geom_line(color = "orange", linewidth = 1.5) +
+  geom_point(size = 3) + 
+  labs(title = "accuracy vs k")
+```
+    
+    This graph shows that the model accuracy reaches it's peak when k = 19
+
+## Decision Tree
+
+The second model we will be using is Decision Tree, according to Wikipedia (Wikipedia contributors, 2022), 'Decision tree model is the model of computation in which an algorithm is considered to be basically a decision tree, i.e., a sequence of queries or tests that are done deceptively, so the outcome of the previous tests can influence the test is performed next.' This allows us to have a high train score, but sometimes will leave us a low test score due to over-fitting during the training.
+The set up for the model is similar to the KNN model in the previous section. 
+
+![Decision Tree](Decisiontree.png)
+The total accuracy we got for decision tree model is 74.90% which is close to KNN model.
+
+## Logistic Regression
+
+The last model we preformed is Logistic Regression model, according to Wikipedia (Wikipedia contributors, 2022b), 'Logistic regression is a statistical model that models the probability of an event taking place by having the log-odds for the event be a linear combination of one or more independent variables.' In this section, we took all the variables and completed a binomial logistic regression.got an accuracy of 73.12% which is lower than decision tree. 
+
+![AUC for logit model](Aucforlogitmodel.png)
+## Model Comparison
+
+Cross compare: 
+  - KNN model: 74.49% accuracy
+  - Decision Tree algorithm: 74.9% accuracy.
+  - Logistic Regression: 73.12% accuracy.
+Out of all the three models, Decision Trees performed best. 
+
+# Conclusion
+- Can we predict the quality of wine using the factors present in the dataset?
+We can predict the quality of wine with the given factors by using the three models we mentioned in section 3, where using decision tree model can give us a 74.90% accuracy and from logitsic regression we got 73% accuracy..
+- Which factor/factors most affect the quality of wine?
+As we can see from section 2.3, alcohol has the most positive effect to the quality of wine and density has the most negative effect to the quality of wine.
+- What is the difference between the accuracy obtained from different models?
+  - KNN model: 74.49% accuracy
+  - Decision Tree algorithm: 74.9% accuracy.
+  - Logistic Regression: 73.12% accuracy.
+- Is there any difference in quality between red and white wines?
+According to section 2.2, we can see that there are many differences of factors for wine with same quality level.
+
+# Reference
+
+- What is the k-nearest neighbors algorithm? | IBM. (n.d.). https://www.ibm.com/topics/knn
+- Wikipedia contributors. (2022, October 12). Decision tree model. Wikipedia. https://en.wikipedia.org/wiki/Decision_tree_model
+- Wikipedia contributors. (2022b, December 5). Logistic regression. Wikipedia. https://en.wikipedia.org/wiki/Logistic_regression

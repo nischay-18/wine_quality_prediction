@@ -1,0 +1,286 @@
+---
+title: "Wine quality EDA"
+author: ""
+date: "today"
+# date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r init, include=FALSE}
+# some of common options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+library(ezids)
+# knitr::opts_chunk$set(warning = F, results = "markup", message = F)
+knitr::opts_chunk$set(warning = F, results = "hide", message = F)
+options(scientific=T, digits = 3) 
+# options(scipen=9, digits = 3) 
+# ‘scipen’: integer. A penalty to be applied when deciding to print numeric values in fixed or exponential notation.  Positive values bias towards fixed and negative towards scientific notation: fixed notation will be preferred unless it is more than ‘scipen’ digits wider.
+# use scipen=999 to prevent scientific notation at all times
+```
+
+## Wine EDA
+
+**Import the dataset into R**  
+There are 1599 observations of red-wine and 4898 observations of white-wine
+```{r}
+wine_red <- data.frame(read.csv("./dataset/winequality-red.csv",sep = ";")) 
+wine_white <- data.frame(read.csv("./dataset/winequality-white.csv",sep = ";")) 
+summary(wine_red)
+summary(wine_white)
+str(wine_red)
+str(wine_white)
+#wine = read.csv("/Users/nischaysaicherukuri/Downloads/wine-quality-white-and-red.csv")
+
+``` 
+
+Combine the two datasets into one
+```{r}
+wine_red['category'] = "red"
+wine_white['category'] = "white"
+wine <- rbind(wine_red,wine_white)
+
+```
+```{r}
+head(wine)
+```
+
+
+Take a look if there is null and na values
+```{r}
+colSums(is.na(wine))
+```
+
+## EDA Analysis
+
+First,let's take a look of the quality distrubution between white and red wine.
+```{r result = TRUE}
+unique(wine$quality)
+table(wine$quality)
+table(wine_white$quality)
+library(ggplot2)
+ggplot(wine, aes(x=quality, color=category)) +
+  geom_histogram(fill="white", position="dodge")+
+  scale_x_continuous(limits = c(3, 9), breaks = seq(3, 9, 1)) +
+  theme(legend.position="top")+
+  xlab('Quality of Wine') +
+  ylab('Number of Wines')
+```
+In the given data set, wine scores are in range [3,8]. The majority of wines  have either 5 or 6 ranking for their quality. The overall distribution is similar for both white and red wine.
+
+Secondly, we would like to see how each independent variables differ from white and red wine.
+1. fixed.acidity
+```{r result = TRUE}
+ggplot(wine, aes(x=fixed.acidity, color=category)) +
+  geom_boxplot()
+```
+2. volatile.acidity
+```{r result = TRUE}
+ggplot(wine, aes(x=volatile.acidity, color=category)) +
+  geom_boxplot()
+```
+3.citric.acid
+```{r result = TRUE}
+ggplot(wine, aes(x=citric.acid, color=category)) +
+  geom_boxplot()
+```
+4.residual.sugar
+```{r result = TRUE}
+ggplot(wine, aes(x=residual.sugar, color=category)) +
+  geom_boxplot()
+```
+5.chlorides
+```{r result = TRUE}
+ggplot(wine, aes(x=chlorides, color=category)) +
+  geom_boxplot()
+```
+6.free.sulfur.dioxide
+```{r result = TRUE}
+ggplot(wine, aes(x=free.sulfur.dioxide, color=category)) +
+  geom_boxplot()
+```
+7.total.sulfur.dioxide
+```{r result = TRUE}
+ggplot(wine, aes(x=total.sulfur.dioxide, color=category)) +
+  geom_boxplot()
+```
+8.density
+```{r result = TRUE}
+ggplot(wine, aes(x=density, color=category)) +
+  geom_boxplot()
+```
+9.pH
+```{r result = TRUE}
+ggplot(wine, aes(x=pH, color=category)) +
+  geom_boxplot()
+```
+10.sulphates
+```{r result = TRUE}
+ggplot(wine, aes(x=sulphates, color=category)) +
+  geom_boxplot()
+```
+11.alcohol
+```{r result = TRUE}
+ggplot(wine, aes(x=alcohol, color=category)) +
+  geom_boxplot()
+```
+From the boxplots, we can see that the variation is differed significantly in following variables:
+fixed.acidity
+residual.sugar
+total.sulfur.oxide
+free.sulfur.dioxide
+chlorides
+volatile.acidity
+
+
+## Testing
+
+Now, let's take a look on correlation between each variable 
+```{r result = TRUE,warning=F}
+loadPkg("corrplot")
+#wine_noca_red = subset(wine_red, select = -c(category) )
+#wine_noca_redcor = cor(wine_noca_red )
+#corrplot(wine_noca_redcor,type="upper")
+
+#wine_noca_white = subset(wine_white, select = -c(category) )
+#wine_noca_whitecor = cor(wine_noca_white)
+#corrplot(wine_noca_whitecor,type="upper")
+
+wine_noca = subset(wine, select = -c(category) )
+wine_nocacor = cor(wine_noca )
+corrplot(wine_nocacor,type="upper")
+```
+As we can see from the correlation diagram, the below variables are mostly corrleated to the quality. And we would like to dig further to see the effect
+quality vs alcohol
+quality vs density
+quality vs volatile.acidity
+quality vs chlorides
+
+quality vs alcohol
+quality vs sulphates
+quality vs citric.acid
+quality vs volatile.acidity
+
+We would anaysis in follwing steps:
+1. normality test - qq plot & histagram
+2. correlation test 
+3. scatter plot&boxplot- check the relationship
+4. Annova test - compare means of our attribute across the wines and check if differences are statistically significant compared to the quality of a wine.
+
+1.quality vs alcohol
+The distribution of alcohol data is right skewed
+```{r result = TRUE,warning=F}
+qqnorm(wine$alcohol, pch = 1, frame = FALSE)
+qqline(wine$alcohol, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=alcohol)) + geom_histogram()
+cor.test(wine$alcohol,wine$quality)
+```
+
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=alcohol, y=quality, color=category, shape = category)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("alcohol vs Quality")
+
+```
+```{r result = TRUE,warning=F}
+wine_cat <- wine
+wine_cat$quality <- factor(wine_cat$quality)
+ggplot(wine_cat, aes(x=quality, y=alcohol, fill=category)) + 
+    geom_boxplot() +
+    facet_wrap(~category)+
+    ggtitle("alcohol vs Quality")
+
+anova_alcohol = aov(alcohol ~ quality, data=wine_cat)
+summary(anova_alcohol)
+```
+
+2.quality vs density
+Density plot looks normally distributed
+```{r result = TRUE,warning=F}
+qqnorm(wine$density, pch = 1, frame = FALSE)
+qqline(wine$density, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=density)) + geom_histogram()
+cor.test(wine$density,wine$quality)
+```
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=density, y=quality, color=category, shape = category)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("density vs Quality")
+
+```
+```{r result = TRUE,warning=F}
+ggplot(wine_cat, aes(x=quality, y=density, fill=category)) + 
+    geom_boxplot() +
+    facet_wrap(~category)+
+    ggtitle("density vs Quality")
+
+anova_density = aov(density ~ quality, data=wine_cat)
+summary(anova_density)
+```
+
+
+3.quality vs volatile.acidity
+The distribution of volatile.acidity data is almost normal,However, there is a small tail on the right side of the plot
+```{r result = TRUE,warning=F}
+qqnorm(wine$volatile.acidity, pch = 1, frame = FALSE)
+qqline(wine$volatile.acidity, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=volatile.acidity)) + geom_histogram()
+cor.test(wine$volatile.acidity,wine$quality)
+```
+
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=volatile.acidity, y=quality, color=category, shape = category)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("volatile.acidity vs Quality")
+```
+```{r result = TRUE,warning=F}
+ggplot(wine_cat, aes(x=quality, y=volatile.acidity, fill=category)) + 
+    geom_boxplot() +
+    facet_wrap(~category)+
+    ggtitle("volatile.acidity vs Quality")
+
+anova_volatile.acidity = aov(volatile.acidity ~ quality, data=wine_cat)
+summary(anova_volatile.acidity)
+```
+
+4.quality vs chlorides
+The distribution looks like normally distributed but is also right skewed 
+```{r result = TRUE,warning=F}
+qqnorm(wine$density, pch = 1, frame = FALSE)
+qqline(wine$density, col = "steelblue", lwd = 2)
+ggplot(wine, aes(x=density)) + geom_histogram()
+cor.test(wine$density,wine$quality)
+```
+
+```{r result = TRUE,warning=F}
+ggplot(wine, aes(x=chlorides,y=quality, color=category, shape = category)) +
+  geom_point() + 
+  geom_smooth(method=lm, se=FALSE, fullrange=TRUE)+
+  ggtitle("chlorides vs Quality")
+```
+```{r result = TRUE,warning=F}
+ggplot(wine_cat, aes(x=quality, y=chlorides, fill=category)) + 
+    geom_boxplot() +
+    facet_wrap(~category)+
+    ggtitle("chlorides vs Quality")
+
+anova_chlorides = aov(chlorides ~ quality, data=wine_cat)
+summary(anova_chlorides)
+```
+
+
+
+
+
+
